@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Enrollment Queue</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #0d4a1f;
+            --primary-light: #1a6b2f;
+            --accent: #f0c040;
+            --danger: #f44336;
+            --success: #4caf50;
+            --info: #2196f3;
+            --warning: #ff9800;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 20px 24px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .login-form {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .dashboard { display: none; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-card .value { font-size: 32px; font-weight: 700; color: var(--primary); }
+        .stat-card .label { font-size: 12px; color: #666; margin-top: 4px; }
+        
+        .current-serving-card {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: white;
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .serving-number { font-size: 64px; font-weight: 700; margin: 10px 0; }
+        
+        .call-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--accent);
+            color: #333;
+            border: none;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 24px;
+        }
+        .call-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-approached { background: var(--info); color: white; }
+        .btn-processing { background: var(--warning); color: white; }
+        .btn-done { background: var(--success); color: white; }
+        .btn-pending { background: #6c757d; color: white; }
+        .btn-cancel { background: var(--danger); color: white; }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .queue-table {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+        }
+        .queue-table table { width: 100%; border-collapse: collapse; }
+        .queue-table th {
+            background: #f8f9fa;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+        }
+        .queue-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+        .queue-table tr:hover td { background: #f8f9fa; }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-waiting { background: #fff3e0; color: var(--warning); }
+        .status-called { background: #ffeb3b; color: #b26a00; }
+        .status-approached { background: #e3f2fd; color: var(--info); }
+        .status-processing { background: #fff8e1; color: var(--warning); }
+        
+        .counters-list {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .counter-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            animation: slideIn 0.3s;
+        }
+        .toast.success { border-left: 4px solid var(--success); }
+        .toast.error { border-left: 4px solid var(--danger); }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 90%;
+        }
+        .modal-content select, .modal-content input {
+            width: 100%;
+            padding: 12px;
+            margin: 12px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .modal-buttons button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        input, select {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🏧 Enrollment Queue Admin</h1>
+        <div>
+            <span id="adminName" style="margin-right: 16px;"></span>
+            <button onclick="logout()" style="background:rgba(255,255,255,0.2); border:none; padding:8px 16px; border-radius:8px; color:white; cursor:pointer;">Logout</button>
+        </div>
+    </div>
+    
+    <div id="loginSection">
+        <div class="login-form">
+            <h2>Staff Login</h2>
+            <input type="text" id="username" placeholder="Username" style="width:100%; margin:10px 0;">
+            <input type="password" id="password" placeholder="Password" style="width:100%; margin:10px 0;">
+            <button onclick="login()" style="width:100%; background:var(--primary); color:white; padding:12px; border:none; border-radius:8px;">Login</button>
+        </div>
+    </div>
+    
+    <div id="dashboard" class="dashboard">
+        <div class="current-serving-card" id="currentServingCard">
+            <div>Currently Serving</div>
+            <div class="serving-number" id="currentServingNumber">—</div>
+            <div id="currentServingName">No customer assigned</div>
+            <div class="action-buttons" id="currentActions"></div>
+        </div>
+        
+        <button class="call-btn" id="callBtn" onclick="callNext()">📢 Call Next Customer</button>
+        
+        <div class="stats-grid">
+            <div class="stat-card"><div class="value" id="waitingCount">0</div><div class="label">Waiting</div></div>
+            <div class="stat-card"><div class="value" id="calledCount">0</div><div class="label">Being Served</div></div>
+            <div class="stat-card"><div class="value" id="completedCount">0</div><div class="label">Completed Today</div></div>
+            <div class="stat-card"><div class="value" id="myCount">0</div><div class="label">My Completed</div></div>
+        </div>
+        
+        <div class="section-title">Active Queue</div>
+        <div class="queue-table">
+            <div id="queueList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Modal -->
+<div id="pendingModal" class="modal">
+    <div class="modal-content">
+        <h3>Mark as Pending</h3>
+        <p>Why is this customer being marked as pending?</p>
+        <select id="pendingReason">
+            <option value="no_show">Did not show up</option>
+            <option value="stepped_away">Stepped away / went to restroom</option>
+            <option value="need_more_time">Needs more time (studying, etc.)</option>
+            <option value="wrong_number">Wrong number called</option>
+        </select>
+        <div class="modal-buttons">
+            <button onclick="submitPending()" style="background:#6c757d; color:white;">Confirm Pending</button>
+            <button onclick="closeModal('pendingModal')" style="background:#ddd;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Modal -->
+<div id="cancelModal" class="modal">
+    <div class="modal-content">
+        <h3>Cancel Customer</h3>
+        <p>Why is this being cancelled?</p>
+        <select id="cancelReason">
+            <option value="mistouch">Mistouch / Wrong number pressed</option>
+            <option value="duplicate">Duplicate entry</option>
+            <option value="customer_left">Student left the queue</option>
+            <option value="already_served">Already served elsewhere</option>
+        </select>
+        <div class="modal-buttons">
+            <button onclick="submitCancel()" style="background:var(--danger); color:white;">Confirm Cancel</button>
+            <button onclick="closeModal('cancelModal')" style="background:#ddd;">Back</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_URL = 'https://your-backend.onrender.com';
+let token = localStorage.getItem('admin_token');
+let adminId = localStorage.getItem('admin_id');
+let currentQueueId = null;
+
+function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    
+    fetch(`${API_URL}/api/admin_login.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            token = data.token;
+            adminId = data.admin_id;
+            localStorage.setItem('admin_token', token);
+            localStorage.setItem('admin_id', adminId);
+            document.getElementById('adminName').innerText = data.display_name || username;
+            showDashboard();
+            loadData();
+            startAutoRefresh();
+        } else {
+            alert('Login failed');
+        }
+    });
+}
+
+function logout() {
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('admin_id');
+    location.reload();
+}
+
+function showDashboard() {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+}
+
+function callNext() {
+    fetch(`${API_URL}/api/call_next.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_id: adminId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`Called customer #${data.queue_number}`, 'success');
+            loadData();
+        } else {
+            showToast(data.error || 'No customers waiting', 'error');
+        }
+    });
+}
+
+// STAFF ACKNOWLEDGES STUDENT ARRIVAL
+function markApproached(queueId) {
+    fetch(`${API_URL}/api/approached.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queue_id: queueId, admin_id: adminId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Student marked as APPROACHED - waiting for processing', 'success');
+            loadData();
+        } else {
+            showToast('Error: ' + (data.error || 'Unknown'), 'error');
+        }
+    });
+}
+
+// Start processing the student
+function startProcessing(queueId) {
+    fetch(`${API_URL}/api/start_processing.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queue_id: queueId, admin_id: adminId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Started processing student request', 'success');
+            loadData();
+        } else {
+            showToast('Error: ' + (data.error || 'Unknown'), 'error');
+        }
+    });
+}
+
+function markDone(queueId) {
+    fetch(`${API_URL}/api/mark_done.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queue_id: queueId, admin_id: adminId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Service completed!', 'success');
+            loadData();
+        } else {
+            showToast('Error completing service', 'error');
+        }
+    });
+}
+
+let pendingQueueId = null;
+function openPendingModal(queueId) {
+    pendingQueueId = queueId;
+    document.getElementById('pendingModal').style.display = 'flex';
+}
+
+function submitPending() {
+    const reason = document.getElementById('pendingReason').value;
+    fetch(`${API_URL}/api/mark_pending.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queue_id: pendingQueueId, admin_id: adminId, reason: reason })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Customer marked as pending - back to queue', 'success');
+            closeModal('pendingModal');
+            loadData();
+        } else {
+            showToast('Error', 'error');
+        }
+    });
+}
+
+let cancelQueueId = null;
+function openCancelModal(queueId) {
+    cancelQueueId = queueId;
+    document.getElementById('cancelModal').style.display = 'flex';
+}
+
+function submitCancel() {
+    const reason = document.getElementById('cancelReason').value;
+    fetch(`${API_URL}/api/cancel_customer.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queue_id: cancelQueueId, admin_id: adminId, reason: reason })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Customer cancelled', 'success');
+            closeModal('cancelModal');
+            loadData();
+        } else {
+            showToast('Error', 'error');
+        }
+    });
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+function loadData() {
+    if (!adminId) return;
+    
+    fetch(`${API_URL}/api/admin_data.php?admin_id=${adminId}`)
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById('waitingCount').innerHTML = data.waiting_count;
+        document.getElementById('calledCount').innerHTML = data.called_count;
+        document.getElementById('completedCount').innerHTML = data.completed_today;
+        document.getElementById('myCount').innerHTML = data.my_completed;
+        
+        // Update current serving card
+        if (data.current_customer) {
+            document.getElementById('currentServingNumber').innerHTML = `#${data.current_customer.queue_number}`;
+            document.getElementById('currentServingName').innerHTML = data.current_customer.name;
+            
+            // Show appropriate action buttons based on status
+            let actionsHtml = '';
+            if (data.current_customer.status === 'called') {
+                actionsHtml = `
+                    <button class="action-btn btn-approached" onclick="markApproached(${data.current_customer.id})">🚶 Student Arrived (Approached)</button>
+                    <button class="action-btn btn-pending" onclick="openPendingModal(${data.current_customer.id})">⏸ Pending</button>
+                    <button class="action-btn btn-cancel" onclick="openCancelModal(${data.current_customer.id})">✗ Cancel</button>
+                `;
+            } else if (data.current_customer.status === 'approached') {
+                actionsHtml = `
+                    <button class="action-btn btn-processing" onclick="startProcessing(${data.current_customer.id})">⚙️ Start Processing</button>
+                    <button class="action-btn btn-pending" onclick="openPendingModal(${data.current_customer.id})">⏸ Pending</button>
+                    <button class="action-btn btn-cancel" onclick="openCancelModal(${data.current_customer.id})">✗ Cancel</button>
+                `;
+            } else if (data.current_customer.status === 'processing') {
+                actionsHtml = `
+                    <button class="action-btn btn-done" onclick="markDone(${data.current_customer.id})">✓ Complete Service</button>
+                    <button class="action-btn btn-pending" onclick="openPendingModal(${data.current_customer.id})">⏸ Pending</button>
+                `;
+            }
+            document.getElementById('currentActions').innerHTML = actionsHtml;
+        } else {
+            document.getElementById('currentServingNumber').innerHTML = '—';
+            document.getElementById('currentServingName').innerHTML = 'No customer assigned';
+            document.getElementById('currentActions').innerHTML = '';
+        }
+        
+        // Build queue table
+        const queueHtml = data.queue.map(q => {
+            let actionButtons = '';
+            if (q.status === 'called') {
+                actionButtons = `
+                    <button class="action-btn btn-approached" onclick="markApproached(${q.id})">🚶 Approached</button>
+                    <button class="action-btn btn-pending" onclick="openPendingModal(${q.id})">⏸ Pending</button>
+                    <button class="action-btn btn-cancel" onclick="openCancelModal(${q.id})">✗ Cancel</button>
+                `;
+            } else if (q.status === 'approached') {
+                actionButtons = `
+                    <button class="action-btn btn-processing" onclick="startProcessing(${q.id})">⚙️ Process</button>
+                    <button class="action-btn btn-pending" onclick="openPendingModal(${q.id})">⏸ Pending</button>
+                    <button class="action-btn btn-cancel" onclick="openCancelModal(${q.id})">✗ Cancel</button>
+                `;
+            }
+            
+            return `
+                <tr>
+                    <td><strong>#${q.queue_number}</strong></td>
+                    <td>${q.name}${q.phone ? `<br><small>📞 ${q.phone}</small>` : ''}</td>
+                    <td>${q.purpose}</td>
+                    <td>${q.wait_mins} min</td>
+                    <td><span class="status-badge status-${q.status}">${q.status}</span></td>
+                    <td>${q.counter_name || '—'}</td>
+                    <td>${actionButtons}</td>
+                </tr>
+            `;
+        }).join('');
+        
+        document.getElementById('queueList').innerHTML = `
+            <table style="width:100%">
+                <thead>
+                    <tr><th>#</th><th>Customer</th><th>Purpose</th><th>Wait</th><th>Status</th><th>Counter</th><th>Actions</th></tr>
+                </thead>
+                <tbody>${queueHtml || '<tr><td colspan="7" style="text-align:center">No active customers</td></tr>'}</tbody>
+            </table>
+        `;
+    });
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+let refreshInterval;
+function startAutoRefresh() {
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(loadData, 5000);
+}
+
+if (token && adminId) {
+    showDashboard();
+    loadData();
+    startAutoRefresh();
+}
+</script>
+</body>
+</html>

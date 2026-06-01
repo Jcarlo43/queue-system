@@ -13,4 +13,6 @@ Thumbs.db
 
 # Logs
 *.log
-error_log
+error_logbackend/config.php
+backend/config.local.php
+.env

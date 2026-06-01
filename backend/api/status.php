@@ -1,8 +1,7 @@
 <?php
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 
 $id = (int)($_GET['id'] ?? 0);
 
@@ -30,11 +29,8 @@ $query = "
 ";
 
 $stmt = $db->prepare($query);
-$stmt->bind_param('i', $id);
-$stmt->execute();
-$result = $stmt->get_result();
-$data = $result->fetch_assoc();
-$stmt->close();
+$stmt->execute([$id]);
+$data = $stmt->fetch(PDO::FETCH_ASSOC);  // ✅ Fixed
 
 if ($data) {
     echo json_encode($data);

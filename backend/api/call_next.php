@@ -1,8 +1,7 @@
 <?php
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
 $admin_id = (int)($data['admin_id'] ?? 0);
@@ -10,11 +9,9 @@ $admin_id = (int)($data['admin_id'] ?? 0);
 $db = get_db();
 
 // Check if admin already has a customer
-$check = $db->prepare("SELECT current_serving FROM admins WHERE id = ?");
-$check->bind_param('i', $admin_id);
-$check->execute();
-$admin = $check->get_result()->fetch_assoc();
-$check->close();
+$stmt = $db->prepare("SELECT current_serving FROM admins WHERE id = ?");
+$stmt->execute([$admin_id]);
+$admin = $stmt->fetch(PDO::FETCH_ASSOC);  // ✅ Fixed
 
 if ($admin && $admin['current_serving']) {
     echo json_encode(['success' => false, 'error' => 'You already have a customer']);
@@ -22,7 +19,7 @@ if ($admin && $admin['current_serving']) {
 }
 
 // Get next waiting customer
-$db->begin_transaction();
+$db->beginTransaction();
 
 $stmt = $db->prepare("
     SELECT id, queue_number, name, phone, purpose 
@@ -33,8 +30,7 @@ $stmt = $db->prepare("
     FOR UPDATE
 ");
 $stmt->execute();
-$customer = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$customer = $stmt->fetch(PDO::FETCH_ASSOC);  // ✅ Fixed
 
 if (!$customer) {
     $db->commit();
@@ -43,26 +39,22 @@ if (!$customer) {
 }
 
 // Update customer status
-$update = $db->prepare("
+$stmt = $db->prepare("
     UPDATE queue 
     SET status = 'called', 
         called_by = ?, 
         called_at = NOW()
     WHERE id = ?
 ");
-$update->bind_param('ii', $admin_id, $customer['id']);
-$update->execute();
-$update->close();
+$stmt->execute([$admin_id, $customer['id']]);
 
 // Update admin's current serving
-$update_admin = $db->prepare("
+$stmt = $db->prepare("
     UPDATE admins 
     SET current_serving = ?, last_activity = NOW() 
     WHERE id = ?
 ");
-$update_admin->bind_param('ii', $customer['id'], $admin_id);
-$update_admin->execute();
-$update_admin->close();
+$stmt->execute([$customer['id'], $admin_id]);
 
 $db->commit();
 

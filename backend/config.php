@@ -9,104 +9,123 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// ✅ SECURE: Get credentials from environment variables (NO HARDCODING!)
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_USER', getenv('DB_USER') ?: 'root');
-define('DB_PASS', getenv('DB_PASS') ?: '');
-define('DB_NAME', getenv('DB_NAME') ?: 'queue_db');
+// ============================================
+// SUPABASE POSTGRESQL CONFIGURATION
+// ============================================
+// Using Session Pooler for IPv4 compatibility with Render
+define('DB_HOST', 'aws-1-ap-southeast-1.pooler.supabase.com');
+define('DB_USER', 'postgres.rwofmwiasawnihpbsijg');
+define('DB_PASS', getenv('DB_PASS') ?: 'YOUR_SUPABASE_PASSWORD_HERE'); // Set in Render Environment Variables!
+define('DB_NAME', 'postgres');
+define('DB_PORT', '5432');
 
+// PDO connection for PostgreSQL
 function get_db() {
     static $connection = null;
     
     if ($connection === null) {
-        $connection = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
-        
-        if ($connection->connect_error) {
-            error_log("Database connection failed: " . $connection->connect_error);
-            die(json_encode(['error' => 'Database connection failed']));
+        try {
+            $dsn = "pgsql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";sslmode=require";
+            $connection = new PDO($dsn, DB_USER, DB_PASS);
+            $connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Database connection failed: " . $e->getMessage());
+            die(json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]));
         }
-        
-        $connection->set_charset('utf8mb4');
-        create_tables_if_not_exist($connection);
     }
     
     return $connection;
 }
 
-function create_tables_if_not_exist($conn) {
-    $conn->query("
+// ============================================
+// HELPER FUNCTIONS FOR POSTGRESQL
+// ============================================
+
+function get_next_queue_number() {
+    $db = get_db();
+    $stmt = $db->prepare("UPDATE settings SET setting_value = (setting_value::INTEGER + 1) WHERE setting_key = 'queue_counter' RETURNING setting_value");
+    $stmt->execute();
+    return (int)$stmt->fetchColumn();
+}
+
+function create_tables_if_not_exist() {
+    $db = get_db();
+    
+    // Queue table
+    $db->exec("
         CREATE TABLE IF NOT EXISTS queue (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            queue_number INT NOT NULL UNIQUE,
+            id SERIAL PRIMARY KEY,
+            queue_number INTEGER NOT NULL UNIQUE,
             name VARCHAR(120) NOT NULL,
             purpose VARCHAR(200) NOT NULL,
             phone VARCHAR(30) DEFAULT '',
-            status ENUM('waiting','called','approached','processing','done','cancelled') DEFAULT 'waiting',
-            called_by INT DEFAULT NULL,
-            called_at DATETIME DEFAULT NULL,
-            approached_at DATETIME DEFAULT NULL,
-            processing_at DATETIME DEFAULT NULL,
-            served_by INT DEFAULT NULL,
-            served_at DATETIME DEFAULT NULL,
+            status VARCHAR(20) DEFAULT 'waiting',
+            called_by INTEGER DEFAULT NULL,
+            called_at TIMESTAMP DEFAULT NULL,
+            approached_at TIMESTAMP DEFAULT NULL,
+            processing_at TIMESTAMP DEFAULT NULL,
+            served_by INTEGER DEFAULT NULL,
+            served_at TIMESTAMP DEFAULT NULL,
             pending_reason VARCHAR(255) DEFAULT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_status (status),
-            INDEX idx_queue_number (queue_number)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ");
     
-    $conn->query("
+    // Admins table
+    $db->exec("
         CREATE TABLE IF NOT EXISTS admins (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             username VARCHAR(60) NOT NULL UNIQUE,
             password_hash VARCHAR(255) NOT NULL,
             display_name VARCHAR(100) DEFAULT '',
             counter_name VARCHAR(100) DEFAULT '',
             role VARCHAR(20) DEFAULT 'staff',
             is_active BOOLEAN DEFAULT TRUE,
-            current_serving INT DEFAULT NULL,
-            last_activity DATETIME DEFAULT NULL,
-            last_login DATETIME DEFAULT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            current_serving INTEGER DEFAULT NULL,
+            last_activity TIMESTAMP DEFAULT NULL,
+            last_login TIMESTAMP DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ");
     
-    $conn->query("
+    // Settings table
+    $db->exec("
         CREATE TABLE IF NOT EXISTS settings (
             setting_key VARCHAR(60) PRIMARY KEY,
             setting_value VARCHAR(200) NOT NULL
         )
     ");
     
-    $result = $conn->query("SELECT COUNT(*) as cnt FROM settings");
-    $row = $result->fetch_assoc();
-    if ($row['cnt'] == 0) {
-        $conn->query("INSERT INTO settings (setting_key, setting_value) VALUES 
-            ('queue_counter', '0'),
-            ('total_served_today', '0'),
-            ('total_cancelled_today', '0'),
-            ('last_reset_date', CURDATE())
+    // Check if settings exist
+    $stmt = $db->query("SELECT COUNT(*) FROM settings");
+    $count = $stmt->fetchColumn();
+    
+    if ($count == 0) {
+        $db->exec("
+            INSERT INTO settings (setting_key, setting_value) VALUES 
+                ('queue_counter', '0'),
+                ('total_served_today', '0'),
+                ('total_cancelled_today', '0'),
+                ('last_reset_date', CURRENT_DATE)
         ");
     }
     
-    $result = $conn->query("SELECT COUNT(*) as cnt FROM admins WHERE username = 'admin'");
-    $row = $result->fetch_assoc();
-    if ($row['cnt'] == 0) {
+    // Check if admin exists
+    $stmt = $db->query("SELECT COUNT(*) FROM admins WHERE username = 'admin'");
+    $adminCount = $stmt->fetchColumn();
+    
+    if ($adminCount == 0) {
+        // Default password: admin123
         $password_hash = password_hash('admin123', PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("INSERT INTO admins (username, password_hash, display_name, counter_name, role) VALUES (?, ?, ?, ?, 'admin')");
-        $display_name = 'Administrator';
-        $counter_name = 'Main Counter';
-        $stmt->bind_param('ssss', 'admin', $password_hash, $display_name, $counter_name);
-        $stmt->execute();
-        $stmt->close();
+        $stmt = $db->prepare("
+            INSERT INTO admins (username, password_hash, display_name, counter_name, role) 
+            VALUES ('admin', ?, 'Administrator', 'Main Counter', 'admin')
+        ");
+        $stmt->execute([$password_hash]);
     }
 }
 
-function get_next_queue_number() {
-    $db = get_db();
-    $db->query("UPDATE settings SET setting_value = LAST_INSERT_ID(setting_value + 1) WHERE setting_key = 'queue_counter'");
-    $result = $db->query("SELECT LAST_INSERT_ID() as next_num");
-    $row = $result->fetch_assoc();
-    return (int)$row['next_num'];
-}
+// Call this ONCE when app starts
+create_tables_if_not_exist();
 ?>

@@ -1,178 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Queue Status - Enrollment</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --primary: #0d4a1f;
-            --primary-light: #1a6b2f;
-            --accent: #f0c040;
-            --danger: #f44336;
-            --success: #4caf50;
-            --info: #2196f3;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .card {
-            background: white;
-            border-radius: 40px;
-            padding: 40px 32px;
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
-            animation: fadeIn 0.4s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); background: #ffeb3b; }
-            50% { transform: scale(1.05); background: #ffc107; }
-        }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-        .queue-number {
-            font-size: 80px;
-            font-weight: 800;
-            color: var(--primary);
-            margin: 20px 0;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 10px 24px;
-            border-radius: 40px;
-            font-weight: 700;
-            margin-bottom: 24px;
-        }
-        .status-waiting { background: #fff3e0; color: #ff9800; }
-        .status-called { 
-            background: #ffeb3b; 
-            color: #b26a00;
-            animation: pulse 0.8s infinite, shake 0.3s ease infinite;
-            font-size: 18px;
-        }
-        .status-approached { background: #e3f2fd; color: #1976d2; }
-        .status-processing { background: #fff8e1; color: #ff9800; }
-        .status-done { background: #d4edda; color: var(--success); }
-        .info-box {
-            background: #f8f9fa;
-            border-radius: 20px;
-            padding: 20px;
-            margin: 20px 0;
-            text-align: left;
-        }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .info-row:last-child { border-bottom: none; }
-        .counter-info {
-            background: #e8f5e9;
-            border-left: 5px solid var(--primary);
-        }
-        .btn {
-            display: inline-block;
-            background: var(--primary);
-            color: white;
-            padding: 14px 28px;
-            border-radius: 40px;
-            text-decoration: none;
-            margin-top: 20px;
-            border: none;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-        }
-        .reminder-text {
-            font-size: 12px;
-            color: #999;
-            margin-top: 10px;
-        }
-        .notification-area {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.9);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 40px;
-            font-size: 14px;
-            z-index: 1000;
-            display: none;
-            white-space: nowrap;
-        }
-        .blink-text {
-            animation: blink 1s infinite;
-            font-weight: bold;
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue # – Institute of Information Technology</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green-dark: #0d4a1f;
+    --green-mid: #1a6b2f;
+    --gold: #f0c040;
+    --white: #ffffff;
+  }
+
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .status-container {
+    max-width: 400px;
+    margin: 0 auto;
+    width: 100%;
+    animation: fadeIn 0.5s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-top: 3px solid var(--gold);
+    border-radius: 16px;
+    padding: 40px 32px;
+    backdrop-filter: blur(12px);
+    text-align: center;
+  }
+
+  .queue-number {
+    font-size: 72px;
+    font-weight: 700;
+    color: var(--gold);
+    margin: 20px 0;
+    font-family: 'Playfair Display', serif;
+  }
+
+  .status {
+    display: inline-block;
+    padding: 8px 20px;
+    border-radius: 40px;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .status-waiting { background: rgba(255,152,0,0.2); color: #ff9800; }
+  .status-called { 
+    background: rgba(240,192,64,0.3); 
+    color: var(--gold);
+    animation: pulse 1s infinite;
+  }
+  .status-approached { background: rgba(33,150,243,0.2); color: #2196f3; }
+  .status-processing { background: rgba(255,152,0,0.2); color: #ff9800; }
+  .status-done { background: rgba(76,175,80,0.2); color: #4caf50; }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
+  .info-box {
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 20px 0;
+    text-align: left;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .info-row:last-child { border-bottom: none; }
+
+  .info-label { color: rgba(255,255,255,0.5); font-size: 13px; }
+  .info-value { color: var(--gold); font-weight: 600; }
+
+  .counter-info {
+    background: rgba(62,207,142,0.1);
+    border-left: 3px solid var(--gold);
+    margin-top: 20px;
+  }
+
+  .btn {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--gold), #c89a10);
+    color: var(--green-dark);
+    padding: 14px 28px;
+    border-radius: 40px;
+    text-decoration: none;
+    margin-top: 20px;
+    font-weight: 700;
+  }
+
+  .notification-area {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.9);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 40px;
+    font-size: 14px;
+    z-index: 1000;
+    display: none;
+    white-space: nowrap;
+  }
+</style>
 </head>
 <body>
-<div class="card" id="statusCard">
-    <h2>Your Queue Status</h2>
+
+<div class="status-container">
+  <div class="card">
+    <h1 style="color: white; font-size: 24px;">Queue Status</h1>
     <div class="queue-number" id="queueNumber">--</div>
-    <div class="status-badge" id="statusBadge">Loading...</div>
-    
+    <div class="status" id="status">Loading...</div>
+
     <div class="info-box">
-        <div class="info-row">
-            <span>👤 Name:</span>
-            <strong id="customerName">--</strong>
-        </div>
-        <div class="info-row">
-            <span>📋 Purpose:</span>
-            <strong id="customerPurpose">--</strong>
-        </div>
-        <div class="info-row">
-            <span>⏳ People ahead:</span>
-            <strong id="waitingAhead">--</strong>
-        </div>
-        <div class="info-row">
-            <span>🔄 Currently serving:</span>
-            <strong id="currentServing">--</strong>
-        </div>
+      <div class="info-row">
+        <span class="info-label">👤 Name:</span>
+        <span class="info-value" id="customerName">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">📋 Purpose:</span>
+        <span class="info-value" id="customerPurpose">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">⏳ Ahead of you:</span>
+        <span class="info-value" id="waitingAhead">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">🔄 Now Serving:</span>
+        <span class="info-value" id="currentServing">--</span>
+      </div>
     </div>
-    
+
     <div id="counterInfo" style="display:none;" class="info-box counter-info">
-        <div class="info-row">
-            <span>📍 Please go to:</span>
-            <strong id="counterName" style="font-size: 24px;"></strong>
-        </div>
-        <div class="info-row">
-            <span>👨‍💼 Staff:</span>
-            <strong id="staffName"></strong>
-        </div>
-        <div class="info-row" id="waitingForStaff" style="color: #ff9800;">
-            <span>⏰ Waiting for staff acknowledgment...</span>
-        </div>
+      <div class="info-row">
+        <span class="info-label">📍 Please go to:</span>
+        <span class="info-value" id="counterName" style="font-size: 20px;">--</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">👨‍💼 Staff:</span>
+        <span class="info-value" id="staffName">--</span>
+      </div>
     </div>
-    
+
     <div id="actionButtons"></div>
-    
-    <div class="reminder-text" id="reminderText"></div>
-    <a href="index.html" class="btn" style="background:#666; margin-top:10px;">New Queue →</a>
+    <a href="index.html" class="btn">New Queue →</a>
+  </div>
 </div>
 
 <div class="notification-area" id="notificationArea">🔔 Your turn! Please proceed to the counter</div>
@@ -190,14 +190,12 @@ let reminderInterval = null;
 let lastStatus = '';
 let alertCount = 0;
 
-// Initialize audio
 function initAudio() {
     if (!audioContext && 'AudioContext' in window) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
 }
 
-// Play beep sound
 function playBeep() {
     try {
         initAudio();
@@ -215,26 +213,21 @@ function playBeep() {
     } catch(e) { console.log('Audio error:', e); }
 }
 
-// Vibrate device
 function vibrate() {
     if ('vibrate' in navigator) {
         navigator.vibrate([500, 200, 500, 200, 1000, 200, 500]);
     }
 }
 
-// Show desktop notification
 function showDesktopNotification() {
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('🔔 IT\'S YOUR TURN!', {
             body: 'Please proceed to the counter immediately!',
-            icon: '/favicon.ico',
-            requireInteraction: true,
-            tag: 'queue-turn'
+            requireInteraction: true
         });
     }
 }
 
-// Full alert sequence
 function fullAlert() {
     for(let i = 0; i < 5; i++) {
         setTimeout(() => {
@@ -243,16 +236,11 @@ function fullAlert() {
         }, i * 600);
     }
     showDesktopNotification();
-    
-    // Show floating notification
     const notification = document.getElementById('notificationArea');
     notification.style.display = 'block';
-    setTimeout(() => {
-        notification.style.display = 'none';
-    }, 5000);
+    setTimeout(() => notification.style.display = 'none', 5000);
 }
 
-// Poll for status updates
 async function checkStatus() {
     try {
         const response = await fetch(`${API_URL}/api/status.php?id=${QUEUE_ID}&t=${Date.now()}`);
@@ -260,118 +248,75 @@ async function checkStatus() {
         
         if (data.error) return;
         
-        // Update UI
         document.getElementById('queueNumber').innerHTML = `#${data.queue_number}`;
         document.getElementById('customerName').innerHTML = data.name;
         document.getElementById('customerPurpose').innerHTML = data.purpose;
         document.getElementById('waitingAhead').innerHTML = data.waiting_ahead;
         document.getElementById('currentServing').innerHTML = data.currently_serving || 'None';
         
-        // Update status badge
         const statusText = {
             'waiting': '⏳ Waiting in Queue',
             'called': '🔔 IT\'S YOUR TURN! 🔔',
-            'approached': '✅ Staff has acknowledged you - Being Served',
-            'processing': '⚙️ Processing Your Request',
+            'approached': '✅ Being Served',
+            'processing': '⚙️ Processing',
             'done': '✅ Service Completed',
             'cancelled': '❌ Cancelled'
         };
-        document.getElementById('statusBadge').innerHTML = statusText[data.status] || data.status;
-        document.getElementById('statusBadge').className = `status-badge status-${data.status}`;
+        document.getElementById('status').innerHTML = statusText[data.status] || data.status;
+        document.getElementById('status').className = `status status-${data.status}`;
         
-        // Handle counter info when called
         if (data.status === 'called' && data.assigned_counter) {
             document.getElementById('counterName').innerHTML = data.assigned_counter;
             document.getElementById('staffName').innerHTML = data.assigned_staff || 'Staff';
             document.getElementById('counterInfo').style.display = 'block';
         }
         
-        // Handle based on status
         if (data.status === 'called') {
-            // Status changed to called - play alerts
             if (lastStatus !== 'called') {
                 fullAlert();
                 alertCount = 0;
-                
-                // Start persistent reminders every 15 seconds
                 if (reminderInterval) clearInterval(reminderInterval);
                 reminderInterval = setInterval(() => {
                     alertCount++;
                     fullAlert();
-                    document.getElementById('reminderText').innerHTML = `⏰ Reminder ${alertCount}: Please proceed to ${data.assigned_counter || 'the counter'}`;
-                    document.getElementById('reminderText').style.color = '#ff9800';
-                    
-                    // After 3 reminders, auto-mark as pending on server
                     if (alertCount >= 3) {
                         fetch(`${API_URL}/api/auto_pending.php`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ queue_id: QUEUE_ID })
                         });
-                        document.getElementById('reminderText').innerHTML = `⚠️ No response detected. You have been moved to pending. Please get a new number.`;
                     }
                 }, 15000);
             }
-            
-            // NO BUTTON for student - only staff can acknowledge
             document.getElementById('actionButtons').innerHTML = `
-                <div style="background:#fff3e0; padding:16px; border-radius:16px;">
-                    <strong>🔴 PLEASE GO TO ${data.assigned_counter || 'THE COUNTER'} NOW</strong><br>
-                    <small style="color:#666;">The staff will acknowledge you when you arrive</small>
+                <div style="background:rgba(240,192,64,0.2); padding:16px; border-radius:12px; margin-top:10px;">
+                    <strong style="color:var(--gold);">🔴 PLEASE GO TO THE COUNTER NOW</strong>
                 </div>
             `;
-            
-        } else if (data.status === 'approached') {
-            // Staff has acknowledged the student
-            if (reminderInterval) clearInterval(reminderInterval);
-            document.getElementById('waitingForStaff').innerHTML = '<span>✅ Staff has acknowledged you! Please wait while they process your request.</span>';
-            document.getElementById('waitingForStaff').style.color = '#4caf50';
-            document.getElementById('actionButtons').innerHTML = `
-                <div style="background:#e8f5e9; padding:16px; border-radius:16px;">
-                    ✅ Staff has acknowledged your arrival. Please wait...
-                </div>
-            `;
-            document.getElementById('reminderText').innerHTML = '';
-            
-        } else if (data.status === 'processing') {
+        } else if (data.status === 'approached' || data.status === 'processing') {
             if (reminderInterval) clearInterval(reminderInterval);
             document.getElementById('actionButtons').innerHTML = `
-                <div style="background:#e3f2fd; padding:16px; border-radius:16px;">
-                    ⚙️ Staff is now processing your request. Please wait...
+                <div style="background:rgba(76,175,80,0.2); padding:16px; border-radius:12px; margin-top:10px;">
+                    ✅ Staff is assisting you. Please wait...
                 </div>
             `;
-            
         } else if (data.status === 'done') {
             if (reminderInterval) clearInterval(reminderInterval);
-            document.getElementById('actionButtons').innerHTML = `
-                <div style="background:#d4edda; padding:16px; border-radius:16px;">
-                    ✅ Thank you for visiting! Your transaction is complete.
-                </div>
-            `;
-            
         } else if (data.status === 'cancelled') {
             if (reminderInterval) clearInterval(reminderInterval);
-            document.getElementById('actionButtons').innerHTML = `
-                <div style="background:#ffebee; padding:16px; border-radius:16px;">
-                    ❌ This ticket has been cancelled. Please get a new number.
-                </div>
-            `;
         }
         
         lastStatus = data.status;
         
-        // Continue polling if not done
         if (data.status !== 'done' && data.status !== 'cancelled') {
             setTimeout(checkStatus, 4000);
         }
-        
     } catch (error) {
         console.error('Polling error:', error);
         setTimeout(checkStatus, 8000);
     }
 }
 
-// Request permissions on user interaction
 document.body.addEventListener('click', () => {
     initAudio();
     if (audioContext) audioContext.resume();
@@ -380,7 +325,6 @@ document.body.addEventListener('click', () => {
     }
 }, { once: true });
 
-// Start polling
 checkStatus();
 </script>
 </body>

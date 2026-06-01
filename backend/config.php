@@ -9,23 +9,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Database configuration - UPDATE THESE WITH YOUR RENDER POSTGRESQL CREDENTIALS
-define('DB_HOST', 'your-render-postgres-host');
-define('DB_USER', 'your-username');
-define('DB_PASS', 'your-password');
-define('DB_NAME', 'your-database-name');
-
-// Or use MySQL on Render (if using MySQL)
-// define('DB_HOST', 'your-mysql-host');
-// define('DB_USER', 'your-username');
-// define('DB_PASS', 'your-password');
-// define('DB_NAME', 'your-database-name');
+// ✅ SECURE: Get credentials from environment variables (NO HARDCODING!)
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') ?: '');
+define('DB_NAME', getenv('DB_NAME') ?: 'queue_db');
 
 function get_db() {
     static $connection = null;
     
     if ($connection === null) {
-        // For PostgreSQL on Render
         $connection = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
         
         if ($connection->connect_error) {
@@ -34,8 +27,6 @@ function get_db() {
         }
         
         $connection->set_charset('utf8mb4');
-        
-        // Create tables if they don't exist
         create_tables_if_not_exist($connection);
     }
     
@@ -43,7 +34,6 @@ function get_db() {
 }
 
 function create_tables_if_not_exist($conn) {
-    // Queue table
     $conn->query("
         CREATE TABLE IF NOT EXISTS queue (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -61,12 +51,10 @@ function create_tables_if_not_exist($conn) {
             pending_reason VARCHAR(255) DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_status (status),
-            INDEX idx_queue_number (queue_number),
-            INDEX idx_called_by (called_by)
+            INDEX idx_queue_number (queue_number)
         )
     ");
     
-    // Admins table
     $conn->query("
         CREATE TABLE IF NOT EXISTS admins (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -83,7 +71,6 @@ function create_tables_if_not_exist($conn) {
         )
     ");
     
-    // Settings table
     $conn->query("
         CREATE TABLE IF NOT EXISTS settings (
             setting_key VARCHAR(60) PRIMARY KEY,
@@ -91,7 +78,6 @@ function create_tables_if_not_exist($conn) {
         )
     ");
     
-    // Insert default settings if not exists
     $result = $conn->query("SELECT COUNT(*) as cnt FROM settings");
     $row = $result->fetch_assoc();
     if ($row['cnt'] == 0) {
@@ -103,7 +89,6 @@ function create_tables_if_not_exist($conn) {
         ");
     }
     
-    // Insert default admin if not exists
     $result = $conn->query("SELECT COUNT(*) as cnt FROM admins WHERE username = 'admin'");
     $row = $result->fetch_assoc();
     if ($row['cnt'] == 0) {
@@ -123,9 +108,5 @@ function get_next_queue_number() {
     $result = $db->query("SELECT LAST_INSERT_ID() as next_num");
     $row = $result->fetch_assoc();
     return (int)$row['next_num'];
-}
-
-function log_activity($admin_id, $queue_id, $action, $details = null) {
-    // Optional: Implement logging if needed
 }
 ?>

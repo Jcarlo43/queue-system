@@ -1,0 +1,11 @@
+RewriteEngine On
+RewriteBase /
+
+# Route /api/xxx to /api/xxx.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^api/([^/]+)$ api/$1.php [L]
+
+# Allow direct access to PHP files
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>

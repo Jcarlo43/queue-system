@@ -7,22 +7,18 @@ RUN apt-get update && apt-get install -y libpq-dev \
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# Set working directory
-WORKDIR /var/www/html
-
 # Copy all files
 COPY . /var/www/html/
 
-# Move backend files to the right location for Apache
-RUN mv /var/www/html/backend/* /var/www/html/ && \
-    rmdir /var/www/html/backend
+# Set document root to backend/api (where your PHP files are)
+ENV APACHE_DOCUMENT_ROOT /var/www/html/backend/api
+
+# Update Apache configuration to use the new document root
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
-# Configure Apache to handle PHP files
-RUN echo "DirectoryIndex index.html status.html admin.html" >> /etc/apache2/apache2.conf
-
-# Expose port 80
 EXPOSE 80

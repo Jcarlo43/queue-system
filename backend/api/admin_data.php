@@ -1,6 +1,14 @@
 <?php
+header('Access-Control-Allow-Origin: https://jcarlo43.github.io');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
 require_once __DIR__ . '/../config.php';
 
 $admin_id = (int)($_GET['admin_id'] ?? 0);
@@ -15,7 +23,7 @@ $stmt = $db->prepare("
     LIMIT 1
 ");
 $stmt->execute([$admin_id]);
-$current = $stmt->fetch(PDO::FETCH_ASSOC);  // ✅ Fixed: fetch_assoc() → fetch(PDO::FETCH_ASSOC)
+$current = $stmt->fetch(PDO::FETCH_ASSOC);
 
 // Get counts
 $waiting = $db->query("SELECT COUNT(*) FROM queue WHERE status = 'waiting'")->fetchColumn();
@@ -40,7 +48,7 @@ $stmt = $db->prepare("
         ELSE 3 END, q.queue_number
 ");
 $stmt->execute();
-$queue = $stmt->fetchAll(PDO::FETCH_ASSOC);  // ✅ Fixed
+$queue = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get active counters
 $stmt = $db->query("
@@ -51,14 +59,14 @@ $stmt = $db->query("
     WHERE a.is_active = true AND a.role != 'admin'
     ORDER BY a.counter_name
 ");
-$counters = $stmt->fetchAll(PDO::FETCH_ASSOC);  // ✅ Fixed
+$counters = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 echo json_encode([
     'current_customer' => $current,
-    'waiting_count' => $waiting,
-    'called_count' => $called,
-    'completed_today' => $completed,
-    'my_completed' => $my_completed,
+    'waiting_count' => (int)$waiting,
+    'called_count' => (int)$called,
+    'completed_today' => (int)$completed,
+    'my_completed' => (int)$my_completed,
     'queue' => $queue,
     'counters' => $counters
 ]);

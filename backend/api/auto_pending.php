@@ -1,6 +1,14 @@
 <?php
+header('Access-Control-Allow-Origin: https://jcarlo43.github.io');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
 require_once __DIR__ . '/../config.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
@@ -11,7 +19,7 @@ $db = get_db();
 // Get the admin who called this customer
 $stmt = $db->prepare("SELECT called_by FROM queue WHERE id = ? AND status = 'called'");
 $stmt->execute([$queue_id]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);  // ✅ Fixed
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($row && $row['called_by']) {
     $admin_id = $row['called_by'];

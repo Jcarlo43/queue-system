@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enrollment Queue System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --primary: #0d4a1f; --primary-light: #1a6b2f; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 32px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        h1 { color: var(--primary); font-size: 28px; margin-bottom: 8px; }
+        .subtitle { color: #666; margin-bottom: 28px; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; }
+        input, select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 14px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:hover { background: var(--primary-light); }
+        .admin-link { margin-top: 20px; }
+        .admin-link a { color: var(--primary); font-size: 12px; text-decoration: none; }
+        .error { background: #ffe5e5; color: #dc3545; padding: 12px; border-radius: 12px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>🏧 Enrollment Queue</h1>
+    <p class="subtitle">Get your number and wait for your turn</p>
+    
+    <div id="message"></div>
+    
+    <form id="queueForm">
+        <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" id="name" placeholder="Enter your full name" required>
+        </div>
+        <div class="form-group">
+            <label>Purpose *</label>
+            <select id="purpose" required>
+                <option value="" disabled selected>Select a service...</option>
+                <option value="Enrollment">📝 Enrollment</option>
+                <option value="Document Request">📄 Document Request</option>
+                <option value="Inquiry">❓ Inquiry</option>
+                <option value="Payment">💰 Payment</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Phone (optional)</label>
+            <input type="tel" id="phone" placeholder="Contact number">
+        </div>
+        <button type="submit">Get Queue Number →</button>
+    </form>
+    <div class="admin-link"><a href="admin.html">Staff Login →</a></div>
+</div>
+
+<script>
+// Update this URL after deploying backend to Render
+const API_URL = 'https://your-backend.onrender.com';
+
+document.getElementById('queueForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const name = document.getElementById('name').value;
+    const purpose = document.getElementById('purpose').value;
+    const phone = document.getElementById('phone').value;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/register.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, purpose, phone })
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            window.location.href = `status.html?id=${data.queue_id}`;
+        } else {
+            document.getElementById('message').innerHTML = `<div class="error">⚠ ${data.error}</div>`;
+        }
+    } catch(error) {
+        document.getElementById('message').innerHTML = `<div class="error">⚠ Network error. Please try again.</div>`;
+    }
+});
+</script>
+</body>
+</html>

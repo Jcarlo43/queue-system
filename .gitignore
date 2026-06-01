@@ -2,17 +2,34 @@
 .env
 *.env
 config.local.php
+backend/config.php
+backend/config.local.php
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # IDE files
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # Logs
 *.log
-error_logbackend/config.php
-backend/config.local.php
-.env
+error_log
+access_log
+
+# Cache
+.cache/
+cache/
+*.cache
+
+# Composer
+vendor/
+composer.lock
+
+# Node modules (if any)
+node_modules/
+package-lock.json

@@ -71,4 +71,4 @@ echo json_encode([
     'queue_number' => $customer['queue_number'],
     'customer_name' => $customer['name']
 ]);
-?>
+?>  

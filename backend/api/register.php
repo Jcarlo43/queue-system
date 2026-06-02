@@ -11,10 +11,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../config.php';
 
-$data = json_decode(file_get_contents('php://input'), true);
-$name = trim($data['name'] ?? '');
-$purpose = trim($data['purpose'] ?? '');
-$phone = trim($data['phone'] ?? '');
+$data    = json_decode(file_get_contents('php://input'), true);
+$name    = trim($data['name']          ?? '');
+$purpose = trim($data['purpose']       ?? '');
+$phone   = trim($data['phone']         ?? '');
+$token   = trim($data['browser_token'] ?? '');
 
 if (!$name || !$purpose) {
     echo json_encode(['success' => false, 'error' => 'Name and purpose required']);
@@ -22,19 +23,53 @@ if (!$name || !$purpose) {
 }
 
 $db = get_db();
+
+// ── Duplicate check via browser token ────────────────────────────────────────
+// If a token is provided, look for an active (non-done, non-cancelled) queue
+// entry registered with the same token today.
+if ($token !== '') {
+    $stmt = $db->prepare("
+        SELECT id, queue_number
+        FROM queue
+        WHERE browser_token = ?
+          AND status NOT IN ('done', 'cancelled')
+          AND created_at::date = CURRENT_DATE
+        LIMIT 1
+    ");
+    $stmt->execute([$token]);
+    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($existing) {
+        echo json_encode([
+            'success'         => false,
+            'duplicate'       => true,
+            'existing_id'     => $existing['id'],
+            'existing_number' => $existing['queue_number'],
+        ]);
+        exit;
+    }
+}
+
+// ── Ensure browser_token column exists (safe migration) ──────────────────────
+// Running this on every request is cheap because PostgreSQL caches catalog lookups.
+$db->exec("
+    ALTER TABLE queue
+    ADD COLUMN IF NOT EXISTS browser_token VARCHAR(120) DEFAULT ''
+");
+
+// ── Register new queue entry ──────────────────────────────────────────────────
 $queue_number = get_next_queue_number();
 
 $stmt = $db->prepare("
-    INSERT INTO queue (queue_number, name, purpose, phone, status, created_at) 
-    VALUES (?, ?, ?, ?, 'waiting', NOW())
+    INSERT INTO queue (queue_number, name, purpose, phone, browser_token, status, created_at)
+    VALUES (?, ?, ?, ?, ?, 'waiting', NOW())
     RETURNING id
 ");
-$stmt->execute([$queue_number, $name, $purpose, $phone]);
+$stmt->execute([$queue_number, $name, $purpose, $phone, $token]);
 $queue_id = $stmt->fetchColumn();
 
 echo json_encode([
-    'success' => true,
+    'success'      => true,
     'queue_number' => $queue_number,
-    'queue_id' => $queue_id
+    'queue_id'     => $queue_id,
 ]);
-?>

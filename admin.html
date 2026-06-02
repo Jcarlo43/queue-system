@@ -247,7 +247,8 @@
   .btn-approached { background: #2196f3; color: white; }
   .btn-processing { background: #ff9800; color: white; }
   .btn-pending { background: #6c757d; color: white; }
-  .btn-cancel { background: var(--danger); color: white; }
+  .btn-cancel  { background: var(--danger); color: white; }
+  .btn-delete  { background: #7b0000; color: #ffaaaa; border: 1px solid #ff4444; }
 
   .modal {
     display: none;
@@ -628,12 +629,15 @@ function loadData() {
               <button class="action-btn btn-pending" onclick="openPendingModal(${q.id})">⏸</button>
               <button class="action-btn btn-cancel" onclick="openCancelModal(${q.id})">✗</button>
             </td>
+            <td>
+              <button class="action-btn btn-delete" onclick="deleteQueue(${q.id}, ${q.queue_number})" title="Hard-delete this entry">🗑</button>
+            </td>
           </tr>
         `).join('');
         
         document.getElementById('queueList').innerHTML = `
           <table>
-            <thead><tr><th>#</th><th>Customer</th><th>Purpose</th><th>Wait</th><th>Status</th><th>Counter</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>Customer</th><th>Purpose</th><th>Wait</th><th>Status</th><th>Counter</th><th>Actions</th><th>Delete</th></tr></thead>
             <tbody>${queueHtml || '<tr><td colspan="7" style="text-align:center">No active customers</td></tr>'}</tbody>
           </table>
         `;
@@ -644,6 +648,24 @@ function loadData() {
             <div>${c.queue_number ? `#${c.queue_number}` : 'Available'}</div>
           </div>
         `).join('') || '<div style="text-align:center; color:var(--muted);">No active counters</div>';
+    });
+}
+
+function deleteQueue(queueId, queueNumber) {
+    if (!confirm(`⚠️ Permanently DELETE queue #${queueNumber}?\n\nThis removes it from the list entirely and cannot be undone.`)) return;
+    fetch(`${API_URL}/api/delete_queue.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queue_id: queueId, admin_id: adminId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast(`Queue #${queueNumber} deleted`, 'success');
+            loadData();
+        } else {
+            showToast(data.error || 'Delete failed', 'error');
+        }
     });
 }
 

@@ -79,6 +79,15 @@
     50% { transform: scale(1.05); }
   }
 
+  /* Flashing red overlay when called */
+  @keyframes flashOverlay {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(255, 50, 50, 0.18); }
+  }
+  body.alert-active {
+    animation: flashOverlay 0.6s ease infinite;
+  }
+
   .info-box {
     background: rgba(255,255,255,0.05);
     border-radius: 12px;
@@ -116,23 +125,46 @@
     font-weight: 700;
   }
 
+  /* Big banner when called */
+  .alert-banner {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: linear-gradient(135deg, #ff2222, #cc0000);
+    color: white;
+    text-align: center;
+    padding: 18px 12px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    z-index: 9000;
+    animation: pulse 0.6s infinite;
+    box-shadow: 0 4px 30px rgba(255,0,0,0.5);
+  }
+  .alert-banner.visible { display: block; }
+
   .notification-area {
     position: fixed;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0,0,0,0.9);
+    background: rgba(0,0,0,0.92);
     color: white;
-    padding: 12px 20px;
+    padding: 14px 24px;
     border-radius: 40px;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
     z-index: 1000;
     display: none;
     white-space: nowrap;
+    border: 2px solid #ff4444;
   }
 </style>
 </head>
 <body>
+
+<!-- Top banner alert -->
+<div class="alert-banner" id="alertBanner">🚨 YOUR NUMBER IS BEING CALLED — PROCEED TO THE COUNTER NOW! 🚨</div>
 
 <div class="status-container">
   <div class="card">
@@ -191,116 +223,152 @@ let lastStatus = '';
 let alertCount = 0;
 
 function initAudio() {
-    if (!audioContext && 'AudioContext' in window) {
+    if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioContext.state === 'suspended') {
+        audioContext.resume();
     }
 }
 
-function playEmergencyAlert() {
+/**
+ * Plays a loud, attention-grabbing multi-layer siren:
+ *  - Layer 1: high-gain square wave sweeping 800 → 1600 Hz
+ *  - Layer 2: lower sine wave for body/rumble
+ *  - Layer 3: percussive noise burst at the start of each cycle
+ * Repeated `cycles` times with a short gap between each.
+ */
+function playUrgentAlert(cycles = 5) {
     try {
         initAudio();
-
         if (!audioContext) return;
 
-        for (let i = 0; i < 10; i++) {
-            setTimeout(() => {
-                const osc = audioContext.createOscillator();
-                const gain = audioContext.createGain();
+        const CYCLE_MS = 600;   // ms per siren up-sweep
+        const GAP_MS   = 120;   // ms silence between cycles
+        const TOTAL    = cycles * (CYCLE_MS + GAP_MS);
 
-                osc.type = 'square';
+        for (let i = 0; i < cycles; i++) {
+            const startSec = audioContext.currentTime + i * (CYCLE_MS + GAP_MS) / 1000;
+            const endSec   = startSec + CYCLE_MS / 1000;
 
-                // Alternate high and low tones
-                osc.frequency.value = (i % 2 === 0) ? 1400 : 900;
+            /* --- Layer 1: swept square wave (siren body) --- */
+            const osc1  = audioContext.createOscillator();
+            const gain1 = audioContext.createGain();
+            osc1.type = 'square';
+            osc1.frequency.setValueAtTime(800,  startSec);
+            osc1.frequency.linearRampToValueAtTime(1600, endSec);
+            gain1.gain.setValueAtTime(0.9, startSec);
+            gain1.gain.setValueAtTime(0.9, endSec - 0.05);
+            gain1.gain.linearRampToValueAtTime(0, endSec);
+            osc1.connect(gain1);
+            gain1.connect(audioContext.destination);
+            osc1.start(startSec);
+            osc1.stop(endSec);
 
-                osc.connect(gain);
-                gain.connect(audioContext.destination);
+            /* --- Layer 2: sine undertone for fullness --- */
+            const osc2  = audioContext.createOscillator();
+            const gain2 = audioContext.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(400, startSec);
+            osc2.frequency.linearRampToValueAtTime(800, endSec);
+            gain2.gain.setValueAtTime(0.6, startSec);
+            gain2.gain.linearRampToValueAtTime(0, endSec);
+            osc2.connect(gain2);
+            gain2.connect(audioContext.destination);
+            osc2.start(startSec);
+            osc2.stop(endSec);
 
-                gain.gain.setValueAtTime(1.0, audioContext.currentTime);
-                gain.gain.exponentialRampToValueAtTime(
-                    0.001,
-                    audioContext.currentTime + 0.35
-                );
-
-                osc.start();
-                osc.stop(audioContext.currentTime + 0.35);
-            }, i * 350);
+            /* --- Layer 3: short noise burst at cycle start --- */
+            const bufSize = audioContext.sampleRate * 0.08; // 80 ms
+            const buffer  = audioContext.createBuffer(1, bufSize, audioContext.sampleRate);
+            const data    = buffer.getChannelData(0);
+            for (let s = 0; s < bufSize; s++) data[s] = Math.random() * 2 - 1;
+            const noise  = audioContext.createBufferSource();
+            const nfilt  = audioContext.createBiquadFilter();
+            const ngain  = audioContext.createGain();
+            noise.buffer = buffer;
+            nfilt.type   = 'bandpass';
+            nfilt.frequency.value = 1200;
+            nfilt.Q.value = 0.8;
+            ngain.gain.setValueAtTime(0.7, startSec);
+            ngain.gain.linearRampToValueAtTime(0, startSec + 0.08);
+            noise.connect(nfilt);
+            nfilt.connect(ngain);
+            ngain.connect(audioContext.destination);
+            noise.start(startSec);
+            noise.stop(startSec + 0.08);
         }
     } catch (e) {
-        console.error(e);
+        console.error('Audio error:', e);
     }
 }
 
 function vibrate() {
     if ('vibrate' in navigator) {
-        navigator.vibrate([500, 200, 500, 200, 1000, 200, 500]);
+        // Long pattern: buzz–pause repeated to get attention
+        navigator.vibrate([600,150,600,150,1000,150,600,150,600]);
     }
 }
 
 function showDesktopNotification() {
     if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('🔔 IT\'S YOUR TURN!', {
-            body: 'Please proceed to the counter immediately!',
-            requireInteraction: true
+        new Notification('🚨 IT\'S YOUR TURN!', {
+            body: 'Please proceed to the counter IMMEDIATELY!',
+            requireInteraction: true,
+            tag: 'queue-alert'  // replaces previous notification instead of stacking
         });
     }
 }
 
+function showAlertBanner(visible) {
+    document.getElementById('alertBanner').classList.toggle('visible', visible);
+    document.body.classList.toggle('alert-active', visible);
+}
+
 function fullAlert() {
-    playEmergencyAlert();
-
-    if ('vibrate' in navigator) {
-        navigator.vibrate([
-            500, 200,
-            500, 200,
-            500, 200,
-            1000
-        ]);
-    }
-
+    playUrgentAlert(6);   // 6 siren cycles ≈ 4.3 seconds
+    vibrate();
     showDesktopNotification();
+    showAlertBanner(true);
 
     const notification = document.getElementById('notificationArea');
     notification.style.display = 'block';
-
-    notification.innerHTML =
-        '🚨 YOUR NUMBER IS BEING CALLED! PROCEED TO THE COUNTER NOW! 🚨';
-
-    setTimeout(() => {
-        notification.style.display = 'none';
-    }, 8000);
+    notification.innerHTML = '🚨 YOUR NUMBER IS BEING CALLED! PROCEED TO THE COUNTER NOW! 🚨';
+    setTimeout(() => { notification.style.display = 'none'; }, 9000);
 }
 
 async function checkStatus() {
     try {
         const response = await fetch(`${API_URL}/api/status.php?id=${QUEUE_ID}&t=${Date.now()}`);
         const data = await response.json();
-        
+
         if (data.error) return;
-        
-        document.getElementById('queueNumber').innerHTML = `#${data.queue_number}`;
+
+        document.getElementById('queueNumber').innerHTML  = `#${data.queue_number}`;
         document.getElementById('customerName').innerHTML = data.name;
         document.getElementById('customerPurpose').innerHTML = data.purpose;
         document.getElementById('waitingAhead').innerHTML = data.waiting_ahead;
         document.getElementById('currentServing').innerHTML = data.currently_serving || 'None';
-        
+
         const statusText = {
-            'waiting': '⏳ Waiting in Queue',
-            'called': '🔔 IT\'S YOUR TURN! 🔔',
+            'waiting':    '⏳ Waiting in Queue',
+            'called':     '🔔 IT\'S YOUR TURN! 🔔',
             'approached': '✅ Being Served',
             'processing': '⚙️ Processing',
-            'done': '✅ Service Completed',
-            'cancelled': '❌ Cancelled'
+            'done':       '✅ Service Completed',
+            'cancelled':  '❌ Cancelled'
         };
-        document.getElementById('status').innerHTML = statusText[data.status] || data.status;
-        document.getElementById('status').className = `status status-${data.status}`;
-        
+        document.getElementById('status').innerHTML  = statusText[data.status] || data.status;
+        document.getElementById('status').className  = `status status-${data.status}`;
+
         if (data.status === 'called' && data.assigned_counter) {
             document.getElementById('counterName').innerHTML = data.assigned_counter;
-            document.getElementById('staffName').innerHTML = data.assigned_staff || 'Staff';
+            document.getElementById('staffName').innerHTML   = data.assigned_staff || 'Staff';
             document.getElementById('counterInfo').style.display = 'block';
         }
-        
+
         if (data.status === 'called') {
+            showAlertBanner(true);
             if (lastStatus !== 'called') {
                 fullAlert();
                 alertCount = 0;
@@ -318,25 +386,25 @@ async function checkStatus() {
                 }, 15000);
             }
             document.getElementById('actionButtons').innerHTML = `
-                <div style="background:rgba(240,192,64,0.2); padding:16px; border-radius:12px; margin-top:10px;">
-                    <strong style="color:var(--gold);">🔴 PLEASE GO TO THE COUNTER NOW</strong>
-                </div>
-            `;
+                <div style="background:rgba(255,50,50,0.25); border:2px solid #ff4444; padding:16px; border-radius:12px; margin-top:10px;">
+                    <strong style="color:#ff6666; font-size:17px;">🔴 PLEASE GO TO THE COUNTER NOW</strong>
+                </div>`;
         } else if (data.status === 'approached' || data.status === 'processing') {
             if (reminderInterval) clearInterval(reminderInterval);
+            showAlertBanner(false);
             document.getElementById('actionButtons').innerHTML = `
                 <div style="background:rgba(76,175,80,0.2); padding:16px; border-radius:12px; margin-top:10px;">
                     ✅ Staff is assisting you. Please wait...
-                </div>
-            `;
-        } else if (data.status === 'done') {
+                </div>`;
+        } else if (data.status === 'done' || data.status === 'cancelled') {
             if (reminderInterval) clearInterval(reminderInterval);
-        } else if (data.status === 'cancelled') {
-            if (reminderInterval) clearInterval(reminderInterval);
+            showAlertBanner(false);
+        } else {
+            showAlertBanner(false);
         }
-        
+
         lastStatus = data.status;
-        
+
         if (data.status !== 'done' && data.status !== 'cancelled') {
             setTimeout(checkStatus, 4000);
         }
@@ -346,9 +414,9 @@ async function checkStatus() {
     }
 }
 
+// Unlock audio + request notification permission on first tap
 document.body.addEventListener('click', () => {
     initAudio();
-    if (audioContext) audioContext.resume();
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
     }

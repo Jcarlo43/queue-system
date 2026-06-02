@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Join the Queue – <?= htmlspecialchars(BUSINESS_NAME) ?></title>
+<title>Join the Queue – Institute of Information Technology</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -151,6 +151,7 @@
 
   .btn:hover { box-shadow: 0 6px 28px rgba(240,192,64,0.45); transform: translateY(-1px); }
   .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
   .error {
     background: rgba(220,50,50,0.12);
@@ -173,6 +174,17 @@
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  .warn-box {
+    background: rgba(245,166,35,0.12);
+    border: 1px solid rgba(245,166,35,0.3);
+    border-radius: 10px;
+    color: #f5a623;
+    font-size: 14px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    line-height: 1.5;
   }
 
   .footer-note {
@@ -224,45 +236,121 @@
       <input type="tel" id="phone" name="phone" placeholder="e.g. 09171234567">
     </div>
 
-    <button type="submit" class="btn">Get My Queue Number →</button>
+    <button type="submit" class="btn" id="submitBtn">Get My Queue Number →</button>
   </form>
 
   <p class="footer-note">Your browser will remember your queue ticket. Keep this page open to receive updates.</p>
 </div>
 
 <script>
-// Update this after deploying backend to Render
 const API_URL = 'https://queue-system-api-lka6.onrender.com/backend';
+
+// ─── Browser Token (duplicate prevention) ────────────────────────────────────
+// Generates or retrieves a stable per-browser token stored in localStorage.
+// The backend uses this to reject double submissions from the same device.
+function getBrowserToken() {
+    const key = 'queue_browser_token';
+    let token = localStorage.getItem(key);
+    if (!token) {
+        // Combine random bytes with fingerprint data for uniqueness
+        const rand = crypto.getRandomValues(new Uint8Array(16));
+        const fp   = [screen.width, screen.height, navigator.language, navigator.hardwareConcurrency || 0].join('|');
+        token = Array.from(rand).map(b => b.toString(16).padStart(2,'0')).join('') + '-' + btoa(fp).replace(/[^a-z0-9]/gi, '').slice(0, 12);
+        localStorage.setItem(key, token);
+    }
+    return token;
+}
+
+// Track the active queue ID for this browser session
+const ACTIVE_QUEUE_KEY = 'active_queue_id';
+
+// Check if this device already has an active queue entry
+async function checkExistingQueue() {
+    const existingId = localStorage.getItem(ACTIVE_QUEUE_KEY);
+    if (!existingId) return null;
+
+    try {
+        const res  = await fetch(`${API_URL}/api/status.php?id=${existingId}`);
+        const data = await res.json();
+        // If still active (not done/cancelled), return its info
+        if (data && !data.error && data.status !== 'done' && data.status !== 'cancelled') {
+            return { id: existingId, queue_number: data.queue_number, status: data.status };
+        }
+    } catch (_) {}
+
+    // Queue is gone or finished — clear the local key
+    localStorage.removeItem(ACTIVE_QUEUE_KEY);
+    return null;
+}
+
+async function init() {
+    const existing = await checkExistingQueue();
+    if (existing) {
+        document.getElementById('message').innerHTML = `
+          <div class="warn-box">
+            ⚠️ You already have an active queue ticket: <strong>#${existing.queue_number}</strong> (${existing.status}).<br>
+            <a href="status.html?id=${existing.id}" style="color:#f5a623; font-weight:700;">View your existing ticket →</a><br><br>
+            <small>If you want a new ticket instead, 
+              <a href="#" id="resetLink" style="color:#f5a623;">click here to clear the old one</a>.
+            </small>
+          </div>`;
+        document.getElementById('submitBtn').disabled = true;
+        document.getElementById('resetLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            localStorage.removeItem(ACTIVE_QUEUE_KEY);
+            document.getElementById('message').innerHTML = '';
+            document.getElementById('submitBtn').disabled = false;
+        });
+    }
+}
 
 document.getElementById('queueForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    const name = document.getElementById('name').value;
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Please wait…';
+
+    const name    = document.getElementById('name').value.trim();
     const purpose = document.getElementById('purpose').value;
-    const phone = document.getElementById('phone').value;
-    
+    const phone   = document.getElementById('phone').value.trim();
+    const token   = getBrowserToken();
+
     try {
         const response = await fetch(`${API_URL}/api/register.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, purpose, phone })
+            body: JSON.stringify({ name, purpose, phone, browser_token: token })
         });
         const data = await response.json();
-        
+
         if (data.success) {
+            // Save active queue so we detect duplicates on next visit
+            localStorage.setItem(ACTIVE_QUEUE_KEY, data.queue_id);
             window.location.href = `status.html?id=${data.queue_id}`;
+        } else if (data.duplicate) {
+            // Server says this token already has a queue entry today
+            localStorage.setItem(ACTIVE_QUEUE_KEY, data.existing_id);
+            document.getElementById('message').innerHTML = `
+              <div class="warn-box">
+                ⚠️ Your device already has an active ticket: <strong>#${data.existing_number}</strong>.<br>
+                <a href="status.html?id=${data.existing_id}" style="color:#f5a623; font-weight:700;">Go to your ticket →</a>
+              </div>`;
+            btn.disabled = true;
+            btn.textContent = 'Get My Queue Number →';
         } else {
             document.getElementById('message').innerHTML = `<div class="error">⚠ ${data.error}</div>`;
+            btn.disabled = false;
+            btn.textContent = 'Get My Queue Number →';
         }
-    } catch(error) {
+    } catch (error) {
         document.getElementById('message').innerHTML = `<div class="error">⚠ Network error. Please try again.</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Get My Queue Number →';
     }
 });
 
-// Store screen resolution for better fingerprinting
-if (!document.cookie.match(/screen_resolution/)) {
-    document.cookie = "screen_resolution=" + screen.width + "x" + screen.height + "; path=/; max-age=31536000";
-}
+init();
 </script>
 </body>
 </html>

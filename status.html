@@ -246,16 +246,28 @@ function showDesktopNotification() {
 }
 
 function fullAlert() {
-    for(let i = 0; i < 5; i++) {
-        setTimeout(() => {
-            playBeep();
-            vibrate();
-        }, i * 600);
+    playEmergencyAlert();
+
+    if ('vibrate' in navigator) {
+        navigator.vibrate([
+            500, 200,
+            500, 200,
+            500, 200,
+            1000
+        ]);
     }
+
     showDesktopNotification();
+
     const notification = document.getElementById('notificationArea');
     notification.style.display = 'block';
-    setTimeout(() => notification.style.display = 'none', 5000);
+
+    notification.innerHTML =
+        '🚨 YOUR NUMBER IS BEING CALLED! PROCEED TO THE COUNTER NOW! 🚨';
+
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 8000);
 }
 
 async function checkStatus() {

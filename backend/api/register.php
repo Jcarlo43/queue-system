@@ -24,9 +24,14 @@ if (!$name || !$purpose) {
 
 $db = get_db();
 
+// ── Safe migration: add browser_token column if it doesn't exist yet ─────────
+// Must run BEFORE any query that references the column.
+$db->exec("
+    ALTER TABLE queue
+    ADD COLUMN IF NOT EXISTS browser_token VARCHAR(120) DEFAULT ''
+");
+
 // ── Duplicate check via browser token ────────────────────────────────────────
-// If a token is provided, look for an active (non-done, non-cancelled) queue
-// entry registered with the same token today.
 if ($token !== '') {
     $stmt = $db->prepare("
         SELECT id, queue_number
@@ -49,13 +54,6 @@ if ($token !== '') {
         exit;
     }
 }
-
-// ── Ensure browser_token column exists (safe migration) ──────────────────────
-// Running this on every request is cheap because PostgreSQL caches catalog lookups.
-$db->exec("
-    ALTER TABLE queue
-    ADD COLUMN IF NOT EXISTS browser_token VARCHAR(120) DEFAULT ''
-");
 
 // ── Register new queue entry ──────────────────────────────────────────────────
 $queue_number = get_next_queue_number();

@@ -196,21 +196,38 @@ function initAudio() {
     }
 }
 
-function playBeep() {
+function playEmergencyAlert() {
     try {
         initAudio();
-        if (audioContext) {
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.frequency.value = 880;
-            gainNode.gain.value = 0.4;
-            oscillator.start();
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
-            oscillator.stop(audioContext.currentTime + 0.5);
+
+        if (!audioContext) return;
+
+        for (let i = 0; i < 10; i++) {
+            setTimeout(() => {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                osc.type = 'square';
+
+                // Alternate high and low tones
+                osc.frequency.value = (i % 2 === 0) ? 1400 : 900;
+
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+
+                gain.gain.setValueAtTime(1.0, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(
+                    0.001,
+                    audioContext.currentTime + 0.35
+                );
+
+                osc.start();
+                osc.stop(audioContext.currentTime + 0.35);
+            }, i * 350);
         }
-    } catch(e) { console.log('Audio error:', e); }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 function vibrate() {
